@@ -2,12 +2,13 @@ import cv2 as cv
 import numpy as np
 import random
 import enum
+from tqdm import tqdm
 
-path = 'textures/apples.png'
+path = 'textures/brick.jpg'
 number_of_blocks = 10
-block_size = 40
+block_size = 100
 random_sample_size = 500
-offset = 10
+offset = 25
 # Numpy array
 # Row Major
 
@@ -18,6 +19,7 @@ class Dir(enum.Enum):
    Right = 1
    Both = 2
 
+
 def main():
     img = cv.imread(path)
 
@@ -25,30 +27,61 @@ def main():
 
     random_good_patch = find_ssd(patches[0], patches[0], generate_path_list(img, random_sample_size), Dir.Right)
     offset_mask = (generate_path_mask_horizontal(generate_ssd_matrix_horizontal(patches[0], random_good_patch)))
-    # print(offset_mask)
+    offset_mask = offset_mask[:,:,0].astype("uint8")
+    offset_mask= cv.transpose(offset_mask)
+    offset_mask = 255 - offset_mask
+
+    segment_left = patches[0][:,block_size - offset: block_size]
+    segment_right = random_good_patch[:, 0:offset]
+
+    segment_left_b,segment_left_g,segment_left_r = cv.split(segment_left)
+    segment_left_b = segment_left_b.astype("uint8")
+    segment_left_g = segment_left_g.astype("uint8")
+    segment_left_r = segment_left_r.astype("uint8")
+
+    segment_right_b, segment_right_g, segment_right_r = cv.split(segment_right)
+    segment_right_b = segment_right_b.astype("uint8")
+    segment_right_g = segment_right_g.astype("uint8")
+    segment_right_r = segment_right_r.astype("uint8")
+
+    result_leftside_b = cv.bitwise_and(segment_left_b,offset_mask)
+    result_leftside_g = cv.bitwise_and(segment_left_g,offset_mask)
+    result_leftside_r = cv.bitwise_and(segment_left_r,offset_mask)
+    offset_mask = 255 - offset_mask
+    result_rightside_b = cv.bitwise_and(segment_right_b, offset_mask)
+    result_rightside_g = cv.bitwise_and(segment_right_g, offset_mask)
+    result_rightside_r = cv.bitwise_and(segment_right_r, offset_mask)
+    combined_b = result_leftside_b + result_rightside_b
+    combined_g = result_leftside_g + result_rightside_g
+    combined_r = result_leftside_r + result_rightside_r
+
+    combined = cv.merge([combined_b,combined_g,combined_r])
 
     #wow_image = create_image(patches, img)
 
-    cv.imshow("mi",patches[0])
-    cv.waitKey(0)
-    cv.imshow("mi",random_good_patch)
+    cv.imshow("mi",np.concatenate((patches[0][:,0:block_size - offset,:], combined, random_good_patch[:,offset:block_size,:]), axis=1))
     cv.waitKey(0)
 
-#def stich_horizontal_patches(patch_left: np.ndarray, patch_right: np.ndarray, mask: np.ndarray):
+#def quilt_vertical(base : np.ndarray, mask: np.ndarray, dst : np.ndarray):
 
 
 def create_patch_array(patches, img):
-    arr = np.zeros((number_of_blocks,number_of_blocks,block_size,block_size, 3), dtype='uint8')
-    for col in range(number_of_blocks):
-        for row in range(number_of_blocks):
-            if col == 0 and row == 0:
-                arr[row,col] = find_ssd(patches[0], patches[0], generate_path_list(img, random_sample_size), Dir.Right)
-            elif col == 0:
-                arr[row,col] = (find_ssd(arr[row - 1][0],patches[0], generate_path_list(img, random_sample_size), Dir.Right))
-            elif row == 0:
-                arr[row,col] = (find_ssd(patches[0], arr[0][col - 1], generate_path_list(img, random_sample_size), Dir.Up))
-            else:
-                arr[row,col] = (find_ssd(arr[row - 1][col], arr[row][col - 1], generate_path_list(img, random_sample_size), Dir.Both))
+    current = 0
+    progress_bar = tqdm(range(number_of_blocks * number_of_blocks))
+    progress_bar.set_description("Creating patch arrays",refresh=False)
+    for current in progress_bar:
+        arr = np.zeros((number_of_blocks,number_of_blocks,block_size,block_size, 3), dtype='uint8')
+        for col in range(number_of_blocks):
+            for row in range(number_of_blocks):
+                current+=1
+                if col == 0 and row == 0:
+                    arr[row,col] = find_ssd(patches[0], patches[0], generate_path_list(img, random_sample_size), Dir.Right)
+                elif col == 0:
+                    arr[row,col] = (find_ssd(arr[row - 1][0],patches[0], generate_path_list(img, random_sample_size), Dir.Right))
+                elif row == 0:
+                    arr[row,col] = (find_ssd(patches[0], arr[0][col - 1], generate_path_list(img, random_sample_size), Dir.Up))
+                else:
+                    arr[row,col] = (find_ssd(arr[row - 1][col], arr[row][col - 1], generate_path_list(img, random_sample_size), Dir.Both))
     return arr
 def create_image(patches, img):
     arr = create_patch_array(patches, img)
@@ -85,7 +118,7 @@ def generate_path_mask_horizontal(offset_matrix: np.ndarray):
             for x in range(offset):
                 if x == min_index:
                     previous_index = x
-                offset_matrix[x,y] = min_index <= x
+                offset_matrix[x,y] = 255 if min_index <= x else 0
         else:
             left_index = previous_index - 1 if previous_index > 0 else 0
             right_index = previous_index + 1 if previous_index < offset else offset
@@ -94,7 +127,7 @@ def generate_path_mask_horizontal(offset_matrix: np.ndarray):
             for index in range(left_index, right_index):
                 if offset_matrix[index, y] == min_val:
                     offset_matrix[0 : index, y] = 0
-                    offset_matrix[index:offset, y] = 1
+                    offset_matrix[index:offset, y] = 255
                     previous_index = index
                     print(previous_index)
                     break

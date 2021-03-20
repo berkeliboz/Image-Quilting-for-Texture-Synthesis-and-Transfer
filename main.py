@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 path = 'textures/apples.png'
 number_of_blocks = 10
-block_size = 100
-random_sample_size = 500
+block_size = 30
+random_sample_size = 5000
 offset = 10
 
 test_1_path = 'textures/test_l.png'
@@ -233,7 +233,7 @@ def generate_path_list(img, number_of_patches):
 
 def calculateSSD_Horizontal(patch_left : np.ndarray,patch_right: np.ndarray, offset_px):
     #Check columns
-    offset_px = int(offset_px/2)
+    offset_px = int(offset_px/2) + 1
                                 # Right side
     patch_left_col = patch_left[:,np.arange(patch_right.shape[0] - offset_px, patch_right.shape[0])]
                                 # Left side
@@ -241,14 +241,14 @@ def calculateSSD_Horizontal(patch_left : np.ndarray,patch_right: np.ndarray, off
     return np.nansum((patch_left_col.astype("int") - patch_right_col.astype("int")) ** 2)
 
 def calculateSSD_Vertical(patch_up : np.ndarray,patch_down: np.ndarray, offset_px):
-    offset_px = int(offset_px/2)
+    offset_px = int(offset_px / 2) + 1
     patch_up_col = patch_up[np.arange(patch_up.shape[0] - offset_px, patch_up.shape[0]), :]
     patch_down_col = patch_down[np.arange(0,offset_px), :]
 
     return np.nansum((patch_up_col.astype("int") - patch_down_col.astype("int")) ** 2)
 
 def calculateSSD_Both(patch_left : np.ndarray,patch_up: np.ndarray,target_patch: np.ndarray, offset_px):
-    offset_px = int(offset_px/2)
+    offset_px = int(offset_px / 2) + 1
     ssd_vertical = calculateSSD_Vertical(patch_up, target_patch, offset_px)
     ssd_horizontal = calculateSSD_Horizontal(patch_left,target_patch, offset_px)
     return (ssd_vertical + ssd_horizontal) / 2

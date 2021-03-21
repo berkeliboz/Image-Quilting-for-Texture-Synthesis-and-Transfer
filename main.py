@@ -5,7 +5,7 @@ import enum
 from tqdm import tqdm
 
 path = 'textures/apples.png'
-number_of_blocks = 3
+number_of_blocks = 4
 block_size = 100
 random_sample_size = 100
 offset = 15
@@ -36,29 +36,47 @@ def main():
     left_patch = patches[0]
     random_good_patch = find_ssd(patches[0], patches[0], generate_path_list(img, random_sample_size), Dir.Up)
 
+    size = number_of_blocks* block_size
+    final_image = np.zeros((size,size, 3), dtype='uint8')
     image, arr = create_image(patches, img)
-    combine_all_vertical(image, arr)
+    combine_all_vertical(final_image, arr)
     cv.imshow("he", image)
     cv.waitKey(0)
 
 def combine_all_vertical(image: np.ndarray, arr: np.ndarray):
     size_vertical = arr.shape[0]
     size_horizontal = arr.shape[1]
-    print(image)
+
+    left_patch = arr[0][0]
+
+    image[0: 0 + left_patch.shape[0], 0: int(left_patch.shape[0]/2)] = left_patch[:, 0: int(left_patch.shape[0]/2)]
+    left_start_offset = int(left_patch.shape[0]/2)
+
+
     for col_line in range(size_vertical):
+        right_offset = 0
         for row_line in range(size_horizontal - 1):
-            img = arr[col_line][row_line]
-            combine_patch_horizontal(arr[row_line][col_line], arr[row_line + 1][col_line])
+            left_patch = arr[row_line][col_line]
+            right_patch = arr[row_line + 1][col_line]
 
-def combine_patch_vertical(up_patch: np.ndarray,down_patch: np.ndarray):
-    cv.imshow("mi",np.concatenate((up_patch, down_patch), axis=0))
-    offset_mask = (generate_ssd_matrix_vertical(up_patch, down_patch))
-    offset_mask = generate_path_mask_vertical(offset_mask)
-    offset_mask = 255 - offset_mask
+            combined = combine_patch_horizontal(arr[row_line][col_line], arr[row_line + 1][col_line])
+            last = np.concatenate((left_patch[:, 0:block_size - offset, :],
+                                   combined,
+                                   right_patch[:, offset:block_size, :]),
+                                  axis=1)
+            cv.imshow("last", last)
 
-    segment_top = up_patch[block_size - offset: block_size, :]
-    segment_bot = down_patch[0: offset, :]
+            left_starting_point = right_offset
+            right_offset += right_patch[:, offset:block_size, :].shape[1]
 
+            image[
+                0 : 0 + last.shape[0],
+                left_start_offset + left_starting_point : left_starting_point + last.shape[1]] = last[:, left_start_offset : last.shape[1]]
+            cv.imshow("mi", image)
+            cv.imshow("added", last[:, left_start_offset: last.shape[1]])
+
+            cv.waitKey(0)
+def create_mask_combination(segment_top, segment_bot, offset_mask):
     segment_left_b, segment_left_g, segment_left_r = cv.split(segment_top)
     segment_left_b = segment_left_b.astype("uint8")
     segment_left_g = segment_left_g.astype("uint8")
@@ -80,13 +98,16 @@ def combine_patch_vertical(up_patch: np.ndarray,down_patch: np.ndarray):
     combined_g = result_leftside_g + result_rightside_g
     combined_r = result_leftside_r + result_rightside_r
 
-    combined = cv.merge([combined_b, combined_g, combined_r])
-    cv.imshow("mask",offset_mask)
+    return cv.merge([combined_b, combined_g, combined_r])
+def combine_patch_vertical(up_patch: np.ndarray,down_patch: np.ndarray):
+    offset_mask = (generate_ssd_matrix_vertical(up_patch, down_patch))
+    offset_mask = generate_path_mask_vertical(offset_mask)
+    offset_mask = 255 - offset_mask
 
-    cv.imshow("combined",combined)
-    cv.imshow("mi",np.concatenate((up_patch[0:block_size - offset, :, :], combined, down_patch[offset:block_size, :, :]),axis=0))
-    cv.waitKey(0)
-    return
+    segment_top = up_patch[block_size - offset: block_size, :]
+    segment_bot = down_patch[0: offset, :]
+
+    return create_mask_combination(segment_top, segment_bot, offset_mask)
 
 def combine_patch_horizontal(left_patch, patch_right):
     offset_mask = (generate_ssd_matrix_horizontal(left_patch, patch_right))
@@ -97,31 +118,7 @@ def combine_patch_horizontal(left_patch, patch_right):
     segment_left = left_patch[:, block_size - offset: block_size]
     segment_right = patch_right[:, 0:offset]
 
-    segment_left_b, segment_left_g, segment_left_r = cv.split(segment_left)
-    segment_left_b = segment_left_b.astype("uint8")
-    segment_left_g = segment_left_g.astype("uint8")
-    segment_left_r = segment_left_r.astype("uint8")
-
-    segment_right_b, segment_right_g, segment_right_r = cv.split(segment_right)
-    segment_right_b = segment_right_b.astype("uint8")
-    segment_right_g = segment_right_g.astype("uint8")
-    segment_right_r = segment_right_r.astype("uint8")
-
-    result_leftside_b = cv.bitwise_and(segment_left_b, offset_mask)
-    result_leftside_g = cv.bitwise_and(segment_left_g, offset_mask)
-    result_leftside_r = cv.bitwise_and(segment_left_r, offset_mask)
-    offset_mask = 255 - offset_mask
-    result_rightside_b = cv.bitwise_and(segment_right_b, offset_mask)
-    result_rightside_g = cv.bitwise_and(segment_right_g, offset_mask)
-    result_rightside_r = cv.bitwise_and(segment_right_r, offset_mask)
-    combined_b = result_leftside_b + result_rightside_b
-    combined_g = result_leftside_g + result_rightside_g
-    combined_r = result_leftside_r + result_rightside_r
-
-    combined = cv.merge([combined_b, combined_g, combined_r])
-    cv.imshow("mi",np.concatenate((left_patch[:,0:block_size - offset,:], combined, patch_right[:,offset:block_size,:]), axis=1))
-    cv.imshow('hi', offset_mask)
-    cv.waitKey(0)
+    return create_mask_combination(segment_left, segment_right, offset_mask)
 
 def create_patch_array(patches, img):
     progress_bar = tqdm(range(number_of_blocks * number_of_blocks))

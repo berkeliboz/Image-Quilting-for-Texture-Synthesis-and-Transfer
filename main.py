@@ -5,12 +5,18 @@ import enum
 import sys
 from tqdm import tqdm
 
-path = 'textures/apples.png'
-number_of_blocks = 4
+path = 'textures/rice.bmp'
+number_of_blocks = 8
 block_size = 100
 random_sample_size = 3000
-offset = 15
-min_error = 400000
+offset = 8
+min_error = 500000
+
+alpha = 0.8
+
+sample_img_path = 'images/al.jpg'
+source_row_num = 25
+source_col_num = 25
 
 # Numpy array
 # Row Major
@@ -24,26 +30,40 @@ class Dir(enum.Enum):
    Left = 3
    Down = 4
 
-
 def main():
     img = cv.imread(path)
-
+    texture_transfer(img)
     patches = generate_path_list(img, random_sample_size)
 
     size = number_of_blocks* block_size
     final_image = np.zeros((size,size, 3), dtype='uint8')
 
-    combine_all_horizontal(final_image, patches)
+    combine_all_horizontal(final_image, patches, number_of_blocks, number_of_blocks, None)
 
-    do_vertical_cut_and_stich(final_image)
+    do_vertical_cut_and_stich(final_image, number_of_blocks - 1)
     cv.imshow("last", final_image)
     cv.waitKey(0)
 
-def do_vertical_cut_and_stich(image: np.ndarray):
-    row = image.shape[0]
-    for row_value in range(number_of_blocks - 1):
+def texture_transfer(img):
+    source_img = cv.imread(sample_img_path)
+    source_img_row_size = int(source_img.shape[0] / source_row_num)
+    source_img_col_size = int(source_img.shape[1] / source_col_num)
+    transfer_img = np.zeros((source_row_num * source_img_row_size, source_col_num * source_img_col_size, source_img.shape[2]), dtype="uint8")
 
-        middle_row = (row - block_size) - block_size * row_value
+    random_patches_list = generate_path_list_precise(img,random_sample_size, source_img_row_size, source_img_col_size)
+
+    combine_all_horizontal(transfer_img, random_patches_list, source_row_num, source_col_num, source_img)
+    do_vertical_cut_and_stich(transfer_img, source_col_num - 1)
+
+def calculate_correspondence_error(source_patch : np.ndarray,transfer_patch : np.ndarray):
+    return calculateSSD_Vertical(source_patch, transfer_patch, transfer_patch.shape[0])
+
+def do_vertical_cut_and_stich(image: np.ndarray, number_of_vertical_blocks):
+    row = image.shape[0]
+    source_img_row_size = int(image.shape[0] / source_row_num)
+    for row_value in range(number_of_vertical_blocks):
+
+        middle_row = (row - source_img_row_size) - source_img_row_size * row_value
         up_patch = image[middle_row - offset : middle_row, :]
         down_patch = image[middle_row : middle_row + offset, :]
         combined = combine_patch_vertical(up_patch, down_patch)
@@ -52,50 +72,65 @@ def do_vertical_cut_and_stich(image: np.ndarray):
         image[middle_row - offset: row - offset, :] = image[middle_row: row, :]
         image[up:down , :] = combined
     crop_image = image[
-                 0 :image.shape[0] - (number_of_blocks - 1) * offset,
-                 0 :image.shape[1] - (number_of_blocks - 1) * offset]
+                 0 :image.shape[0] - (number_of_vertical_blocks) * offset,
+                 0 :image.shape[1] - (number_of_vertical_blocks) * offset]
     cv.imshow("image", crop_image)
 
     cv.waitKey(0)
-def combine_all_horizontal(image: np.ndarray, patches):
+def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of_cols, source_img):
     left_patch = patches[0]
-    shape_offset = left_patch.shape[0]
+    row_shape_offset = left_patch.shape[0]
+    col_shape_offset = left_patch.shape[1]
     up_patch = None
-    for row_line in range(number_of_blocks):
+    source_img_row_size = 0
+    source_img_col_size = 0
+    transfer_patch = None
+    if type(source_img) is np.ndarray:
+        source_img_row_size = int(source_img.shape[0] / source_row_num)
+        source_img_col_size = int(source_img.shape[1] / source_col_num)
+
+    for row_line in range(number_of_rows):
         right_offset = 0
         height = 0
         last = None
 
-        for col_line in range(number_of_blocks - 1):
+        for col_line in range(number_of_cols - 1):
+            print(row_line,col_line)
+            if type(source_img) is np.ndarray:
+                row_start = row_line * source_img_row_size
+                col_start = col_line * source_img_col_size
+                transfer_patch = source_img[row_start: row_start + source_img_row_size,
+                                 col_start: col_start + source_img_col_size]
             if row_line == 0:
-                right_patch = find_ssd(left_patch, left_patch, patches, Dir.Right)
+                right_patch = find_ssd(left_patch, left_patch, patches, Dir.Right, transfer_patch)
             else:
                 prev_height = up_patch.shape[0] * (row_line-1)
-                right_patch_offset = (up_patch.shape[0] - offset) * (col_line + 1)
-                up_patch = image[prev_height: prev_height + block_size, right_patch_offset : right_patch_offset + block_size]
-                cv.imshow("imgae", up_patch)
-                cv.imshow("image", image)
-                right_patch = find_ssd(left_patch, up_patch, patches, Dir.Both)
+                right_patch_offset = (up_patch.shape[1] - offset) * (col_line + 1)
+                up_patch = image[prev_height: prev_height + row_shape_offset, right_patch_offset : right_patch_offset + col_shape_offset]
+
+                right_patch = find_ssd(left_patch, up_patch, patches, Dir.Both, transfer_patch)
             combined = combine_patch_horizontal(left_patch, right_patch)
 
-            last = np.concatenate((left_patch[:, 0:block_size - offset, :],
+            last = np.concatenate((left_patch[:, 0:row_shape_offset - offset, :],
                                    combined,
-                                   right_patch[:, offset:block_size, :]),
+                                   right_patch[:, offset:row_shape_offset, :]),
                                   axis=1)
             left_starting_point = right_offset
-            right_offset += right_patch[:, offset:block_size, :].shape[1]
+            right_offset += right_patch[:, offset:row_shape_offset, :].shape[1]
 
             height = last.shape[0] * row_line
             image[
                 height : height + last.shape[0],
                 left_starting_point : left_starting_point + last.shape[1]] = last
             last_col = left_starting_point + last.shape[1]
-            left_patch = image[height : height + last.shape[0], last_col - shape_offset: last_col]
+            left_patch = image[height : height + last.shape[0], last_col - col_shape_offset: last_col]
         right_offset = 0
-        left_patch = image[height: height + block_size, 0 : block_size]
-        up_patch = find_ssd(left_patch, left_patch, patches, Dir.Up)
+        left_patch = image[height: height + row_shape_offset, 0 : col_shape_offset]
+        up_patch = find_ssd(left_patch, left_patch, patches, Dir.Up, transfer_patch)
         left_patch = up_patch
         last_direction = Dir.Up
+    cv.imshow("img",image)
+    cv.waitKey(0)
     return
 def create_mask_combination(segment_top, segment_bot, offset_mask):
     segment_left_b, segment_left_g, segment_left_r = cv.split(segment_top)
@@ -137,16 +172,16 @@ def combine_patch_horizontal(left_patch, patch_right):
     offset_mask = offset_mask[:, :, 0].astype("uint8")
     offset_mask = 255 - offset_mask
 
-    segment_left = left_patch[:, block_size - offset: block_size]
+    segment_left = left_patch[:, left_patch.shape[1] - offset: block_size]
     segment_right = patch_right[:, 0:offset]
 
     return create_mask_combination(segment_left, segment_right, offset_mask)
 
 def generate_ssd_matrix_horizontal(patch_left: np.ndarray, patch_right: np.ndarray):
-    offset_matrix = np.zeros((block_size,offset, 1), dtype= "long")
-    left_row_size = patch_left.shape[0] # row
+    offset_matrix = np.zeros((patch_left.shape[0],offset, 1), dtype= "long")
+    left_row_size = patch_left.shape[1] # row
 
-    for row in range(block_size):
+    for row in range(patch_left.shape[0]):
         for col in range(offset):
             err_b = int(patch_left[row, (left_row_size - offset) + col][0]) - int(patch_right[row,col][0])
             err_g = int(patch_left[row, (left_row_size - offset) + col][1]) - int(patch_right[row, col][1])
@@ -227,14 +262,14 @@ def generate_path_mask_horizontal(offset_matrix: np.ndarray):
     solution_matrix = np.zeros((offset_matrix.shape[0],offset_matrix.shape[1], offset_matrix.shape[2]), dtype="long")
     solution_matrix[0,:] = offset_matrix[0,:]
 
-    for row in range(1,block_size):
+    for row in range(1, solution_matrix.shape[0]):
         for col in range(0,offset):
             left_col = col - 1 if col - 1 > 0 else 0
             right_col = col + 1 if col + 1 < offset else offset - 1
             min_val = min(solution_matrix[row - 1, left_col : right_col + 1])
             solution_matrix[row,col] = min_val + offset_matrix[row,col]
 
-    last_row = block_size - 1
+    last_row = solution_matrix.shape[0] - 1
     min_val = min(solution_matrix[last_row, :])
     last_col = np.where(solution_matrix[last_row, :] == min_val)[0][0]
 
@@ -282,36 +317,47 @@ def generate_path_mask_horizontal(offset_matrix: np.ndarray):
     offset_matrix[last_row, last_col + 1:offset] = 255
     return offset_matrix
 
-def find_ssd(source_patch_left, source_patch_up, patches, direction):
+def find_ssd(source_patch_left, source_patch_up, patches, direction, transfer_patch):
     min_index = 0
     min_ssd = sys.maxsize
+    correspondence_error = 1
+
     for index in range(len(patches)):
+        ## Calculate transfer_patch_coefficient
+        if type(transfer_patch) is np.ndarray:
+            correspondence_error = calculateSSD_Vertical(patches[index], transfer_patch, transfer_patch.shape[0])
+
         if direction == Dir.Up:
-            ssd = calculateSSD_Vertical(source_patch_up, patches[index], offset)
+            ssd = alpha * calculateSSD_Vertical(source_patch_up, patches[index], offset) + (1 - alpha) * correspondence_error
         elif direction == Dir.Right:
-            ssd = calculateSSD_Horizontal(source_patch_left, patches[index], offset)
+            ssd = alpha * calculateSSD_Horizontal(source_patch_left, patches[index], offset) + (1 - alpha) * correspondence_error
         else:
-            ssd = calculateSSD_Both(source_patch_left,source_patch_up, patches[index], offset)
+            ssd_both = calculateSSD_Both(source_patch_left,source_patch_up, patches[index], offset)
+            ssd = alpha * ssd_both + (1 - alpha) * correspondence_error
 
         if ssd < min_ssd:
             if ssd > min_error:
                 min_ssd = ssd
                 min_index = index
-
-    print(direction)
     print(min_ssd)
     return patches[min_index]
+
+def generate_path_list_precise(img, number_of_patches, row,col):
+    patches = []
+    for index in range(number_of_patches):
+        patches.append(grab_random_box(img,row,col))
+    return patches
 
 def generate_path_list(img, number_of_patches):
     patches = []
     for index in range(number_of_patches):
-        patches.append(grab_random_box(block_size, img))
+        patches.append(grab_random_box(img,block_size,block_size))
     return patches
 
 def calculateSSD_Horizontal(patch_left : np.ndarray,patch_right: np.ndarray, offset_px):
     #Check columns
                                 # Right side
-    patch_left_col = patch_left[:,np.arange(patch_right.shape[0] - offset_px, patch_right.shape[0])]
+    patch_left_col = patch_left[:,np.arange(patch_right.shape[1] - offset_px, patch_right.shape[1])]
                                 # Left side
     patch_right_col = patch_right[:,np.arange(0, offset_px)]
     return np.nansum((patch_left_col.astype("int") - patch_right_col.astype("int")) ** 2)
@@ -335,13 +381,13 @@ def generate_random_overlap(img):
         block_start = block_index * block_size
         for block_index_y in range(number_of_blocks):
             block_start_y = block_index_y * block_size
-            blank[block_start : block_start + block_size , block_start_y : block_start_y + block_size ] = grab_random_box(block_size, img)
+            blank[block_start : block_start + block_size , block_start_y : block_start_y + block_size ] = grab_random_box(img,block_size,block_size)
     return blank
 
-def grab_random_box(block_size, img: np.ndarray):
-    row_start = random.randrange(0, img.shape[0] - block_size)
-    column_start = random.randrange(0, img.shape[1] - block_size)
-    return img[row_start : row_start+block_size , column_start : column_start + block_size]
+def grab_random_box(img: np.ndarray, row_size, col_size):
+    row_start = random.randrange(0, img.shape[0] - row_size)
+    column_start = random.randrange(0, img.shape[1] - col_size)
+    return img[row_start : row_start+row_size , column_start : column_start + col_size]
 
 def rescale(img: np.ndarray, scale = 0.1):
     width = int(img.shape[1] * scale)

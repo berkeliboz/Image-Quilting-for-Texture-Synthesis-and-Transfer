@@ -5,18 +5,18 @@ import enum
 import sys
 from tqdm import tqdm
 
-path = 'textures/rice.bmp'
+path = 'textures/text.jpg'
 number_of_blocks = 8
-block_size = 100
-random_sample_size = 3000
-offset = 8
-min_error = 500000
+block_size = 60
+random_sample_size = 5000
+offset = 5
+min_error = 100000
 
-alpha = 0.8
+alpha = 1
 
 sample_img_path = 'images/al.jpg'
-source_row_num = 25
-source_col_num = 25
+source_row_num = 10
+source_col_num = 10
 
 # Numpy array
 # Row Major
@@ -32,7 +32,7 @@ class Dir(enum.Enum):
 
 def main():
     img = cv.imread(path)
-    texture_transfer(img)
+    #texture_transfer(img)
     patches = generate_path_list(img, random_sample_size)
 
     size = number_of_blocks* block_size
@@ -60,7 +60,8 @@ def calculate_correspondence_error(source_patch : np.ndarray,transfer_patch : np
 
 def do_vertical_cut_and_stich(image: np.ndarray, number_of_vertical_blocks):
     row = image.shape[0]
-    source_img_row_size = int(image.shape[0] / source_row_num)
+    col = image.shape[1]
+    source_img_row_size = int(image.shape[0] / (number_of_vertical_blocks + 1))
     for row_value in range(number_of_vertical_blocks):
 
         middle_row = (row - source_img_row_size) - source_img_row_size * row_value
@@ -72,8 +73,8 @@ def do_vertical_cut_and_stich(image: np.ndarray, number_of_vertical_blocks):
         image[middle_row - offset: row - offset, :] = image[middle_row: row, :]
         image[up:down , :] = combined
     crop_image = image[
-                 0 :image.shape[0] - (number_of_vertical_blocks) * offset,
-                 0 :image.shape[1] - (number_of_vertical_blocks) * offset]
+                 0 :row - (number_of_vertical_blocks * offset),
+                 0 :col - (number_of_vertical_blocks * offset)]
     cv.imshow("image", crop_image)
 
     cv.waitKey(0)
@@ -369,9 +370,9 @@ def calculateSSD_Vertical(patch_up : np.ndarray,patch_down: np.ndarray, offset_p
     return np.nansum((patch_up_col.astype("int") - patch_down_col.astype("int")) ** 2)
 
 def calculateSSD_Both(patch_left : np.ndarray,patch_up: np.ndarray,target_patch: np.ndarray, offset_px):
-    ssd_vertical = calculateSSD_Vertical(patch_up, target_patch, offset_px)
-    ssd_horizontal = calculateSSD_Horizontal(patch_left,target_patch, offset_px)
-    return (ssd_vertical + ssd_horizontal) / 2
+    ssd_vertical = int(calculateSSD_Vertical(patch_up, target_patch, offset_px))
+    ssd_horizontal = int(calculateSSD_Horizontal(patch_left,target_patch, offset_px))
+    return (ssd_vertical * ssd_horizontal)
 
 def generate_random_overlap(img):
     block_px_size = block_size * number_of_blocks

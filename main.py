@@ -5,8 +5,8 @@ import enum
 import sys
 from tqdm import tqdm
 
-path = 'textures/text.jpg'
-number_of_blocks = 8
+path = 'textures/textures/g_bc4_00_color.png'
+number_of_blocks = 16
 block_size = 60
 random_sample_size = 5000
 offset = 5
@@ -40,9 +40,10 @@ def main():
 
     combine_all_horizontal(final_image, patches, number_of_blocks, number_of_blocks, None)
 
-    do_vertical_cut_and_stich(final_image, number_of_blocks - 1)
+    final_image = do_vertical_cut_and_stich(final_image, number_of_blocks - 1)
     cv.imshow("last", final_image)
     cv.waitKey(0)
+    return cv.cvtColor(final_image, cv.COLOR_BGR2RGB)
 
 def texture_transfer(img):
     source_img = cv.imread(sample_img_path)
@@ -75,9 +76,7 @@ def do_vertical_cut_and_stich(image: np.ndarray, number_of_vertical_blocks):
     crop_image = image[
                  0 :row - (number_of_vertical_blocks * offset),
                  0 :col - (number_of_vertical_blocks * offset)]
-    cv.imshow("image", crop_image)
-
-    cv.waitKey(0)
+    return crop_image
 def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of_cols, source_img):
     left_patch = patches[0]
     row_shape_offset = left_patch.shape[0]

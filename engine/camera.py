@@ -3,6 +3,7 @@ import engine.entity as Entity
 import pygame.surface
 import pygame.math as math
 import pygame.transform as transform
+import config
 
 class Camera(Entity.Transform):
     def __init__(self, size : math.Vector2):
@@ -25,13 +26,13 @@ class Camera(Entity.Transform):
     def update(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_DOWN]:
-            self.location.y += 0.1
+            self.location.y -= config.CAMERA_SPEED
         if keys[pygame.K_RIGHT]:
-            self.location.x += 0.1
+            self.location.x -= config.CAMERA_SPEED
         if keys[pygame.K_LEFT]:
-            self.location.x -= 0.1
+            self.location.x += config.CAMERA_SPEED
         if keys[pygame.K_UP]:
-            self.location.y -= 0.1
+            self.location.y += config.CAMERA_SPEED
 
         self.display.fill((0,0,0))
         self.top_left = math.Vector2(self.location[0] - self.camera_size[0]/2, self.location[1] - self.camera_size[1]/2)

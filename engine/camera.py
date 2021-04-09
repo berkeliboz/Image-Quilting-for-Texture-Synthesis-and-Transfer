@@ -13,6 +13,8 @@ class Camera(Entity.Transform):
 
     def render_entity(self, entity : Entity.Entity):
         if self.display:
+            if entity.texture is None:
+                return
             camera_location = entity.world_transform.location + self.location
 
             local_img = transform.scale(

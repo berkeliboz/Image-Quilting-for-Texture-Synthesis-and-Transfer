@@ -7,6 +7,7 @@ class Entity():
         self.local_transform = Transform()
         self.id = EntityManager.register_entity(self)
         self.size = size
+        self.texture = None
     def __del__(self):
         EntityManager.free_id(self.id)
 

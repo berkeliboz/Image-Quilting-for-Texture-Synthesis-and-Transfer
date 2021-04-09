@@ -1,13 +1,13 @@
 import cv2 as cv
 import numpy as np
 import random
-import enum
+from direction import direction
 import sys
 from tqdm import tqdm
 
 path = 'textures/textures/g_bc4_00_color.png'
-number_of_blocks = 16
-block_size = 60
+number_of_blocks = 8
+#block_size = 60
 random_sample_size = 5000
 offset = 5
 min_error = 100000
@@ -23,29 +23,42 @@ source_col_num = 10
 
     # BGR
 
-class Dir(enum.Enum):
-   Up = 0
-   Right = 1
-   Both = 2
-   Left = 3
-   Down = 4
 
 def main():
     img = cv.imread(path)
-    #texture_transfer(img)
-    patches = generate_path_list(img, random_sample_size)
+    block_size = 50
+    #texture_transfer(img, block_size)
+    patches = generate_path_list(img, random_sample_size, block_size)
 
-    size = number_of_blocks* block_size
+    size = number_of_blocks * block_size
     final_image = np.zeros((size,size, 3), dtype='uint8')
 
-    combine_all_horizontal(final_image, patches, number_of_blocks, number_of_blocks, None)
+    combine_all_horizontal(final_image, patches, number_of_blocks, number_of_blocks, None, block_size)
 
     final_image = do_vertical_cut_and_stich(final_image, number_of_blocks - 1)
     cv.imshow("last", final_image)
     cv.waitKey(0)
     return cv.cvtColor(final_image, cv.COLOR_BGR2RGB)
 
-def texture_transfer(img):
+def generate_texture(sample_texture_path, block_size):
+    img = cv.imread(sample_texture_path)
+    patches = generate_path_list(img, random_sample_size, block_size)
+
+    size = number_of_blocks * block_size
+    final_image = np.zeros((size, size, 3), dtype='uint8')
+
+    combine_all_horizontal(final_image, patches, number_of_blocks, number_of_blocks, None, block_size)
+
+    texture = do_vertical_cut_and_stich(final_image, number_of_blocks - 1)
+    return cv.cvtColor(texture, cv.COLOR_BGR2RGB)
+
+def read_path_2RGB(path):
+    return cv.cvtColor(cv.imread(path), cv.COLOR_BGR2RGB)
+
+def request_patch(sample_patch, block_size):
+    pass
+
+def texture_transfer(img, block_size):
     source_img = cv.imread(sample_img_path)
     source_img_row_size = int(source_img.shape[0] / source_row_num)
     source_img_col_size = int(source_img.shape[1] / source_col_num)
@@ -53,7 +66,7 @@ def texture_transfer(img):
 
     random_patches_list = generate_path_list_precise(img,random_sample_size, source_img_row_size, source_img_col_size)
 
-    combine_all_horizontal(transfer_img, random_patches_list, source_row_num, source_col_num, source_img)
+    combine_all_horizontal(transfer_img, random_patches_list, source_row_num, source_col_num, source_img, block_size)
     do_vertical_cut_and_stich(transfer_img, source_col_num - 1)
 
 def calculate_correspondence_error(source_patch : np.ndarray,transfer_patch : np.ndarray):
@@ -77,7 +90,7 @@ def do_vertical_cut_and_stich(image: np.ndarray, number_of_vertical_blocks):
                  0 :row - (number_of_vertical_blocks * offset),
                  0 :col - (number_of_vertical_blocks * offset)]
     return crop_image
-def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of_cols, source_img):
+def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of_cols, source_img, block_size):
     left_patch = patches[0]
     row_shape_offset = left_patch.shape[0]
     col_shape_offset = left_patch.shape[1]
@@ -102,14 +115,14 @@ def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of
                 transfer_patch = source_img[row_start: row_start + source_img_row_size,
                                  col_start: col_start + source_img_col_size]
             if row_line == 0:
-                right_patch = find_ssd(left_patch, left_patch, patches, Dir.Right, transfer_patch)
+                right_patch = find_ssd(left_patch, left_patch, patches, direction.Right, transfer_patch)
             else:
                 prev_height = up_patch.shape[0] * (row_line-1)
                 right_patch_offset = (up_patch.shape[1] - offset) * (col_line + 1)
                 up_patch = image[prev_height: prev_height + row_shape_offset, right_patch_offset : right_patch_offset + col_shape_offset]
 
-                right_patch = find_ssd(left_patch, up_patch, patches, Dir.Both, transfer_patch)
-            combined = combine_patch_horizontal(left_patch, right_patch)
+                right_patch = find_ssd(left_patch, up_patch, patches, direction.Both, transfer_patch)
+            combined = combine_patch_horizontal(left_patch, right_patch, block_size)
 
             last = np.concatenate((left_patch[:, 0:row_shape_offset - offset, :],
                                    combined,
@@ -126,9 +139,9 @@ def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of
             left_patch = image[height : height + last.shape[0], last_col - col_shape_offset: last_col]
         right_offset = 0
         left_patch = image[height: height + row_shape_offset, 0 : col_shape_offset]
-        up_patch = find_ssd(left_patch, left_patch, patches, Dir.Up, transfer_patch)
+        up_patch = find_ssd(left_patch, left_patch, patches, direction.Up, transfer_patch)
         left_patch = up_patch
-        last_direction = Dir.Up
+        last_direction = direction.Up
     cv.imshow("img",image)
     cv.waitKey(0)
     return
@@ -166,7 +179,7 @@ def combine_patch_vertical(up_patch: np.ndarray,down_patch: np.ndarray):
 
     return create_mask_combination(segment_top, segment_bot, offset_mask)
 
-def combine_patch_horizontal(left_patch, patch_right):
+def combine_patch_horizontal(left_patch, patch_right, block_size):
     offset_mask = (generate_ssd_matrix_horizontal(left_patch, patch_right))
     offset_mask = generate_path_mask_horizontal(offset_mask)
     offset_mask = offset_mask[:, :, 0].astype("uint8")
@@ -220,7 +233,7 @@ def generate_path_mask_vertical(offset_matrix: np.ndarray):
 
     sneaky_hack_counter = 0
     while(last_col > 0):
-        result_dir = Dir.Both
+        result_dir = direction.Both
 
         smallest_value = sys.maxsize
         result_row = 0
@@ -229,28 +242,28 @@ def generate_path_mask_vertical(offset_matrix: np.ndarray):
             if solution_matrix[last_row - 1,last_col] < smallest_value:
                 result_row, result_col = last_row - 1, last_col
                 smallest_value = solution_matrix[last_row - 1,last_col]
-                result_dir = Dir.Up
+                result_dir = direction.Up
         if last_row + 1 < offset:
             if solution_matrix[last_row + 1, last_col] < smallest_value:
                 result_row, result_col = last_row + 1, last_col
                 smallest_value = solution_matrix[last_row + 1, last_col]
-                result_dir = Dir.Down
+                result_dir = direction.Down
         if last_col > 0:
             if solution_matrix[last_row, last_col - 1] < smallest_value:
                 result_row, result_col = last_row, last_col - 1
                 smallest_value = solution_matrix[last_row, last_col - 1]
-                result_dir = Dir.Left
+                result_dir = direction.Left
         last_row, last_col = result_row, result_col
-        if result_dir == Dir.Up:
+        if result_dir == direction.Up:
             if sneaky_hack_counter > 3:
                 last_row, last_col = last_row, last_col - 1
                 offset_matrix[0: last_row + 1, last_col + 1] = 0
                 offset_matrix[last_row + 1: offset, last_col + 1] = 255
                 sneaky_hack_counter = False
-        if result_dir == Dir.Down:
+        if result_dir == direction.Down:
             sneaky_hack_counter+= 1
 
-        if result_dir == Dir.Left:
+        if result_dir == direction.Left:
             sneaky_hack_counter = 0
             offset_matrix[0 : last_row + 1, last_col+1 ] = 0
             offset_matrix[last_row + 1 : offset,last_col+1] = 255
@@ -278,7 +291,7 @@ def generate_path_mask_horizontal(offset_matrix: np.ndarray):
 
     sneaky_hack_counter = 0
     while(last_row > 0):
-        result_dir = Dir.Both
+        result_dir = direction.Both
 
         smallest_value = sys.maxsize
         result_row = 0
@@ -287,28 +300,28 @@ def generate_path_mask_horizontal(offset_matrix: np.ndarray):
             if solution_matrix[last_row,last_col - 1] < smallest_value:
                 result_row, result_col = last_row, last_col - 1
                 smallest_value = solution_matrix[last_row,last_col - 1]
-                result_dir = Dir.Left
+                result_dir = direction.Left
         if last_col + 1 < offset:
             if solution_matrix[last_row, last_col + 1] < smallest_value:
                 result_row, result_col = last_row, last_col + 1
                 smallest_value = solution_matrix[last_row, last_col + 1]
-                result_dir = Dir.Right
+                result_dir = direction.Right
 
         if last_row > 0:
             if solution_matrix[last_row - 1, last_col] < smallest_value:
                 result_row, result_col = last_row - 1, last_col
                 smallest_value = solution_matrix[last_row - 1, last_col]
-                result_dir = Dir.Up
+                result_dir = direction.Up
         last_row, last_col = result_row, result_col
-        if result_dir == Dir.Right:
+        if result_dir == direction.Right:
             if sneaky_hack_counter > 3:
                 last_row, last_col = last_row - 1, last_col
                 offset_matrix[last_row + 1, 0: last_col + 1] = 0
                 offset_matrix[last_row + 1, last_col + 1:offset] = 255
                 sneaky_hack_counter = False
-        if result_dir == Dir.Left:
+        if result_dir == direction.Left:
             sneaky_hack_counter+= 1
-        if result_dir == Dir.Up:
+        if result_dir == direction.Up:
             sneaky_hack_counter = 0
             offset_matrix[last_row + 1, 0: last_col + 1] = 0
             offset_matrix[last_row + 1, last_col + 1:offset] = 255
@@ -317,19 +330,19 @@ def generate_path_mask_horizontal(offset_matrix: np.ndarray):
     offset_matrix[last_row, last_col + 1:offset] = 255
     return offset_matrix
 
-def find_ssd(source_patch_left, source_patch_up, patches, direction, transfer_patch):
+def find_ssd(source_patch_left, source_patch_up, patches, direction, transfer_patch= None):
     min_index = 0
     min_ssd = sys.maxsize
     correspondence_error = 1
 
     for index in range(len(patches)):
         ## Calculate transfer_patch_coefficient
-        if type(transfer_patch) is np.ndarray:
+        if transfer_patch is not None and type(transfer_patch) is np.ndarray:
             correspondence_error = calculateSSD_Vertical(patches[index], transfer_patch, transfer_patch.shape[0])
 
-        if direction == Dir.Up:
+        if direction == direction.Up:
             ssd = alpha * calculateSSD_Vertical(source_patch_up, patches[index], offset) + (1 - alpha) * correspondence_error
-        elif direction == Dir.Right:
+        elif direction == direction.Right:
             ssd = alpha * calculateSSD_Horizontal(source_patch_left, patches[index], offset) + (1 - alpha) * correspondence_error
         else:
             ssd_both = calculateSSD_Both(source_patch_left,source_patch_up, patches[index], offset)
@@ -348,7 +361,7 @@ def generate_path_list_precise(img, number_of_patches, row,col):
         patches.append(grab_random_box(img,row,col))
     return patches
 
-def generate_path_list(img, number_of_patches):
+def generate_path_list(img, number_of_patches, block_size):
     patches = []
     for index in range(number_of_patches):
         patches.append(grab_random_box(img,block_size,block_size))
@@ -373,7 +386,7 @@ def calculateSSD_Both(patch_left : np.ndarray,patch_up: np.ndarray,target_patch:
     ssd_horizontal = int(calculateSSD_Horizontal(patch_left,target_patch, offset_px))
     return (ssd_vertical * ssd_horizontal)
 
-def generate_random_overlap(img):
+def generate_random_overlap(img, block_size):
     block_px_size = block_size * number_of_blocks
     blank = np.zeros((block_px_size,block_px_size,3), dtype='uint8')
 

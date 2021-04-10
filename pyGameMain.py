@@ -27,9 +27,6 @@ def init():
 
     #test_entity.set_texture(sheared_img)
 
-    test_entity2 = Entity((100, 100), (Transform(Vector2(100, 300))))
-    img2 = np.array(cv.imread('textures/textures/g_bc4_00_color.png'))
-    test_entity2.set_texture(img2)
     main_display = display.Display()
 
 if __name__ == "__main__":

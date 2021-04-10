@@ -25,7 +25,7 @@ class Terrain(Entity):
         self.patches, self.max_row, self.max_col = self.request_terrain()
         img = image_quilting.read_path_2RGB(config.SAMPLE_IMAGE_PATH)
         self.random_patches = image_quilting.generate_path_list(img, 5000, config.TERRAIN_SAMPLE_PATCH_SIZE)
-        self.request_terrain_extention(direction.Right, 3, 6)
+        #self.request_terrain_extention(0, 5)
 
     def request_terrain(self):
         max_size = config.TERRAIN_MAX_NUMBER_OF_PATCHES
@@ -49,12 +49,37 @@ class Terrain(Entity):
         return patches, number_of_vertical_patches - 1, number_of_horizontal_patches - 1
 
     # TODO: 1 - Direction is redundant, can be calculated
-    def request_terrain_extention(self, direction, row, col):
-        # TODO: 2 - Extend the system to support Left and Down patch requests
-        if direction == direction.Right:
-            right_patch = image_quilting.find_ssd(self.patches[row][col - 1],self.patches[row][col - 1] , self.random_patches, direction.Right)
+    def request_terrain_extention(self, row, col):
+        quilt_size = config.TERRAIN_QUILTING_SIZE
+        patch_size = config.TERRAIN_SAMPLE_PATCH_SIZE
+        dir = direction()
 
-            # TODO: 3 - No OpenCV code inside terrain allowed
-            combined = image_quilting.combine_patch_horizontal(self.patches[row][col - 1], right_patch, config.TERRAIN_SAMPLE_PATCH_SIZE)
-            cv.imshow("combined", combined)
+        horizontal_source_patch = None
+        vertical_source_patch = None
+        dir.Right = self.patches[row][col - 1] is not None
+
+        if dir.Right:
+            horizontal_source_patch = self.patches[row][col - 1]
+        #Extend Top
+        #Extend Right
+
+        #TODO: WIP
+        #Extend Left
+        if dir.Right:
+            result_patch = image_quilting.find_ssd(
+                horizontal_source_patch,
+                vertical_source_patch,
+                self.random_patches, dir)
+
+            combined = image_quilting.combine_patch_horizontal(self.patches[row][col - 1], result_patch, patch_size)
+            self.patches[row][col - 1] = combined
+            result_patch = result_patch[:, quilt_size : patch_size, :]
+
+            patch = Terrain_Patch((patch_size, patch_size),Transform((row * patch_size, col * patch_size)))
+            self.patches[row][col] = result_patch
+            patch.set_texture(self.patches[row][col])
+
             cv.waitKey(0)
+        #Extend Bottom
+
+

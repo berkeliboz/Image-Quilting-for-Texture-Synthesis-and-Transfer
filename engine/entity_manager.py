@@ -1,5 +1,4 @@
 import engine.entity as Entity
-import engine.terrain as terrain
 import heapq
 
 class EntityManager():

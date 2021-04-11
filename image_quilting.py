@@ -8,7 +8,7 @@ from tqdm import tqdm
 path = 'textures/apples.png'
 number_of_blocks = 8
 #block_size = 60
-random_sample_size = 5000
+random_sample_size = 8000
 offset = 10
 min_error = 100000
 
@@ -36,8 +36,6 @@ def main():
     combine_all_horizontal(final_image, patches, number_of_blocks, number_of_blocks, None, block_size)
 
     final_image = do_vertical_cut_and_stich(final_image, number_of_blocks - 1)
-    cv.imshow("last", final_image)
-    cv.waitKey(0)
     return cv.cvtColor(final_image, cv.COLOR_BGR2RGB)
 
 def generate_texture(sample_texture_path, block_size):
@@ -72,7 +70,7 @@ def texture_transfer(img, block_size):
 def calculate_correspondence_error(source_patch : np.ndarray,transfer_patch : np.ndarray):
     return calculateSSD_Vertical(source_patch, transfer_patch, transfer_patch.shape[0])
 
-def do_vertical_cut_and_stich(image: np.ndarray, number_of_vertical_blocks):
+def do_vertical_cut_and_stich(image: np.ndarray, number_of_vertical_blocks, horizontal_crop = True):
     row = image.shape[0]
     col = image.shape[1]
     source_img_row_size = int(image.shape[0] / (number_of_vertical_blocks + 1))
@@ -86,10 +84,12 @@ def do_vertical_cut_and_stich(image: np.ndarray, number_of_vertical_blocks):
         down = middle_row
         image[middle_row - offset: row - offset, :] = image[middle_row: row, :]
         image[up:down , :] = combined
-    crop_image = image[
-                 0 :row - (number_of_vertical_blocks * offset),
-                 0 :col - (number_of_vertical_blocks * offset)]
-    return crop_image
+    if horizontal_crop:
+        return image[
+            0 :row - (number_of_vertical_blocks * offset),
+            0 :col - (number_of_vertical_blocks * offset)]
+    return image[0 :row - (number_of_vertical_blocks * offset),:]
+
 def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of_cols, source_img, block_size):
     left_patch = patches[0]
     row_shape_offset = left_patch.shape[0]
@@ -149,8 +149,6 @@ def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of
         up_patch = find_ssd(left_patch, left_patch, patches, dir, transfer_patch)
         left_patch = up_patch
         last_direction = direction.Up
-    cv.imshow("img",image)
-    cv.waitKey(0)
     return
 def create_mask_combination(segment_top, segment_bot, offset_mask):
     segment_left_b, segment_left_g, segment_left_r = cv.split(segment_top)

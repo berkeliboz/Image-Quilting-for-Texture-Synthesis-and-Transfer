@@ -7,15 +7,11 @@ from engine.entity import Entity
 from engine.transform import Transform
 from direction import direction
 
-class Terrain_Patch(Entity):
-    def __init__(self, size, world_transform):
-        super().__init__(size, world_transform)
-
-
 class Terrain(Entity):
     def __init__(self, size, world_transform):
         super().__init__(size, world_transform)
         output_path = config.OUTPUT_PATH
+        self.terrain_id_map = dict()
 
         # TODO: Deserialization
         #if path:
@@ -48,7 +44,7 @@ class Terrain(Entity):
         patches = np.empty((max_size, max_size), dtype= np.ndarray)
         for row in range(number_of_vertical_patches - 1):
             for col in range(number_of_horizontal_patches - 1):
-                patch = Terrain_Patch((sample_patch_size,sample_patch_size), Transform((row * sample_patch_size, col * sample_patch_size)))
+                patch = Terrain_Patch((sample_patch_size,sample_patch_size), Transform((row * sample_patch_size, col * sample_patch_size)),row,col, self)
                 patches[row][col] = texture[
                           row * sample_patch_size : ((row + 1) * sample_patch_size),
                           col * sample_patch_size : ((col + 1) * sample_patch_size)]
@@ -114,10 +110,13 @@ class Terrain(Entity):
             self.patches[row][col - 1] = last[:,0: patch_size,:]
             result_patch = last[:, patch_size : patch_size + patch_size, :]
 
-        patch = Terrain_Patch((patch_size, patch_size),Transform((row * patch_size, col * patch_size)))
+        patch = Terrain_Patch((patch_size, patch_size),Transform((row * patch_size, col * patch_size)), row, col, self)
         self.patches[row][col] = result_patch
         patch.set_texture(self.patches[row][col])
 
         #Extend Bottom
 
-
+class Terrain_Patch(Entity):
+    def __init__(self, size, world_transform, row,col, attached_terrain : Terrain):
+        super().__init__(size, world_transform)
+        attached_terrain.terrain_id_map[(row, col)] = self

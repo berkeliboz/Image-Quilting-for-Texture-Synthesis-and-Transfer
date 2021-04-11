@@ -3,7 +3,6 @@ import heapq
 
 class EntityManager():
     __instance = None
-    entity_map = dict()
     entity_heap = []
     free_ids = list()
     max_id = 0
@@ -35,6 +34,5 @@ class EntityManager():
     @staticmethod
     def register_entity(entity : Entity):
         new_id = EntityManager.generate_id()
-        EntityManager.entity_map[new_id] = entity
         heapq.heappush(EntityManager.entity_heap, (new_id, entity))
         return new_id

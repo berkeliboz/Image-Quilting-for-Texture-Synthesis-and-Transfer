@@ -9,9 +9,9 @@ path = 'textures/apples.png'
 number_of_blocks = 8
 block_size = 70
 random_sample_size = 8000
-offset = 20
+offset = 15
 min_error = 0
-stride_size = 3
+stride_size = 2
 
 alpha = 1
 
@@ -32,7 +32,6 @@ def main():
     # texture_transfer(img, block_size)
 
     patches = generate_path_list(img, random_sample_size, block_size)
-    sample_test(75, patches)
     size = number_of_blocks * block_size
     final_image = np.zeros((size, size, 3), dtype='uint8')
 
@@ -55,26 +54,6 @@ def generate_texture(sample_texture_path, block_size):
 
     texture = do_vertical_cut_and_stich(final_image, number_of_blocks - 1)
     return cv.cvtColor(texture, cv.COLOR_BGR2RGB)
-
-
-def sample_test(num, patches: list):
-    first_patch = patches[num]
-    dir = direction()
-    dir.Up = True
-    patch = find_ssd(first_patch, first_patch, patches, dir, None)
-    fst = stitch_vertical(first_patch, patch, patches)
-    cv.imshow("fst", fst)
-    cv.waitKey(0)
-
-    dir_right = direction()
-    dir.right = True
-    patch_new = find_ssd(fst[0:fst.shape[1],:], None, patches, dir_right, None)
-    cv.imshow("patch_new", fst[0:fst.shape[1],:])
-    cv.waitKey(0)
-    glst = stitch_horizontal(fst[0:fst.shape[1],:], patch_new, patches)
-    cv.imshow("glst", glst)
-    cv.imshow("patch_new", patch_new)
-    cv.waitKey(0)
 
 def stitch_vertical(patch_up: np.ndarray, patch_down: np.ndarray, patches):
     combined = combine_patch_vertical(patch_up, patch_down)

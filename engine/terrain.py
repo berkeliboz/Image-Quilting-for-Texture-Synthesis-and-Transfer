@@ -90,14 +90,14 @@ class Terrain(Entity):
         # TODO: WIP
         # Extend Right
         if dir.Right:
-            combined = image_quilting.combine_patch_horizontal(horizontal_source_patch, result_patch, patch_size)
+            combined = image_quilting.combine_patch_horizontal(horizontal_source_patch, result_patch)
             sample_dir = direction()
             sample_dir.Right = True
             right_sample = image_quilting.find_ssd(
                 result_patch,
                 None,
                 self.random_patches, sample_dir)
-            combined_r = image_quilting.combine_patch_horizontal(result_patch, right_sample, patch_size)
+            combined_r = image_quilting.combine_patch_horizontal(result_patch, right_sample)
             last = np.concatenate((horizontal_source_patch[:, 0:patch_size - quilt_size, :],
                                    combined,
                                    result_patch[:, quilt_size:patch_size - quilt_size, :],

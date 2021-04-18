@@ -34,5 +34,14 @@ class EntityManager():
     @staticmethod
     def register_entity(entity : Entity):
         new_id = EntityManager.generate_id()
-        heapq.heappush(EntityManager.entity_heap, (new_id, entity))
+        entity.id = new_id
         return new_id
+
+    @staticmethod
+    def enable_update(entity : Entity, new_id):
+        heapq.heappush(EntityManager.entity_heap, (new_id, entity))
+
+    @staticmethod
+    def get_terrain():
+        # First index is always reserved for terrain
+        return EntityManager.entity_heap[0][1]

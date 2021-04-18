@@ -12,9 +12,7 @@ import image_quilting
 def init():
     entity_manager.EntityManager.getInstance()
 
-    test_terrain = Terrain((500,500), (Transform(Vector2(0,0))))
-
-    #test_entity = Entity((500,500), (Transform(Vector2(-100,-100))))
+    test_terrain = Terrain((500, 500), (Transform(Vector2(0, 0))), True)
 
     #img = np.array(image_quilting.main())
     #rows, cols, dim = img.shape

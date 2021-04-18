@@ -7,11 +7,11 @@ from tqdm import tqdm
 
 path = 'textures/apples.png'
 number_of_blocks = 8
-block_size = 70
+block_size = 80
 random_sample_size = 8000
-offset = 15
+offset = 30
 min_error = 0
-stride_size = 2
+stride_size = 3
 
 alpha = 1
 
@@ -31,7 +31,7 @@ def main():
     block_size = 60
     # texture_transfer(img, block_size)
 
-    patches = generate_path_list(img, random_sample_size, block_size)
+    patches = generate_path_list(img, block_size)
     size = number_of_blocks * block_size
     final_image = np.zeros((size, size, 3), dtype='uint8')
 
@@ -45,7 +45,7 @@ def main():
 
 def generate_texture(sample_texture_path, block_size):
     img = cv.imread(sample_texture_path)
-    patches = generate_path_list(img, random_sample_size, block_size)
+    patches = generate_path_list(img, block_size)
 
     size = number_of_blocks * block_size
     final_image = np.zeros((size, size, 3), dtype='uint8')
@@ -71,7 +71,6 @@ def stitch_vertical(patch_up: np.ndarray, patch_down: np.ndarray, patches):
                            right_sample[offset: offset + offset, :, :]))
     return last
 
-
 def stitch_horizontal(patch_left: np.ndarray, patch_right: np.ndarray, patches):
     combined = combine_patch_horizontal(patch_left, patch_right)
     sample_dir = direction()
@@ -89,6 +88,20 @@ def stitch_horizontal(patch_left: np.ndarray, patch_right: np.ndarray, patches):
                           axis=1)
     return last
 
+def stitch_vertical_lossy(patch_up: np.ndarray, patch_down: np.ndarray):
+    combined = combine_patch_vertical(patch_up, patch_down)
+    last = np.concatenate((patch_up[0:patch_up.shape[0] - offset, :, :],
+                           combined,
+                           patch_down[offset:patch_down.shape[0] - offset, :, :]))
+    return last
+
+def stitch_horizontal_lossy(patch_left: np.ndarray, patch_right: np.ndarray):
+    combined = combine_patch_horizontal(patch_left, patch_right)
+    last = np.concatenate((patch_left[:, 0:patch_left.shape[1] - offset, :],
+                           combined,
+                           patch_right[:, offset:patch_right.shape[1] - offset, :]),
+                          axis=1)
+    return last
 
 def read_path_2RGB(path):
     return cv.cvtColor(cv.imread(path), cv.COLOR_BGR2RGB)
@@ -433,7 +446,7 @@ def generate_path_list_precise(img, number_of_patches, row, col):
     return patches
 
 
-def generate_path_list(img, number_of_patches, block_size):
+def generate_path_list(img, block_size):
     return generate_deterministic_boxes(img, block_size, block_size, stride_size)
 
 

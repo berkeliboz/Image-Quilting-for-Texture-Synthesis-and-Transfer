@@ -19,6 +19,8 @@ class Terrain(Entity):
         self.terrain_id_map = dict()
 
         # TODO: Deserialization
+        # Moved the serialization to the individual texture patches and generate_terrain
+        # Can be changed, but I found it was the best location
         # if path:
         # else:
 
@@ -82,9 +84,9 @@ class Terrain(Entity):
                     (row * (sample_patch_size - quilt_size), col * (sample_patch_size - quilt_size))), False)
                 self.terrain_id_map[(row, col)] = patch
                 if patch.has_basis_texture():
-                    print("Used cached file " + patch.get_basis_filename())
+                    # print("Used cached file " + patch.get_basis_filename())
                     continue
-                print("Generated basis texture " + patch.get_basis_filename())
+
                 if row == 0:
                     result_texture = image_quilting.find_ssd(self.get_basis_texture_at(row, col - 1), None,
                                                              self.random_patches, direction(False, True, False, False))
@@ -215,11 +217,9 @@ class Terrain_Patch(Entity):
     def __init__(self, size, world_transform, enable_update):
         super().__init__(size, world_transform, False)
 
-        # print(str.format("{}???", os.path.isdir("./engine/patches")))
-
         # Check if basis image exists in a pickle, if so, load that
         self.pickle_basis_location = str.format("./engine/patches/{0}-{1}-basis.p", config.IMAGE_NAME,
-                                                                     world_transform.get_location_string())
+                                                world_transform.get_location_string())
         if os.path.isfile(self.pickle_basis_location):
             self.basis_texture = pickle.load(open(self.pickle_basis_location, "rb"))
         else:
@@ -227,7 +227,7 @@ class Terrain_Patch(Entity):
         size = config.TERRAIN_SAMPLE_PATCH_SIZE
         # Check if the texture exists in a pickle, if so, load that
         self.pickle_texture_location = str.format("./engine/patches/{0}-{1}-texture.p", config.IMAGE_NAME,
-                                                                       world_transform.get_location_string())
+                                                  world_transform.get_location_string())
         if os.path.isfile(self.pickle_texture_location):
             self.texture = pickle.load(open(self.pickle_texture_location, "rb"))
         else:

@@ -1,7 +1,8 @@
 HEIGHT = 720
 WIDTH = 480
 CAMERA_SPEED = 1
-SAMPLE_IMAGE_PATH = 'textures/apples.png'
+SAMPLE_IMAGE_PATH = 'textures/Single_Grass_Tile.png'
+IMAGE_NAME = "Single_Grass_Tile"
 OUTPUT_PATH = "\engine\patches"
 
 ################

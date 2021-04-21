@@ -55,6 +55,7 @@ def generate_texture(sample_texture_path, block_size):
     texture = do_vertical_cut_and_stich(final_image, number_of_blocks - 1)
     return cv.cvtColor(texture, cv.COLOR_BGR2RGB)
 
+
 def stitch_vertical(patch_up: np.ndarray, patch_down: np.ndarray, patches):
     combined = combine_patch_vertical(patch_up, patch_down)
     sample_dir = direction()
@@ -70,6 +71,7 @@ def stitch_vertical(patch_up: np.ndarray, patch_down: np.ndarray, patches):
                            combined_r,
                            right_sample[offset: offset + offset, :, :]))
     return last
+
 
 def stitch_horizontal(patch_left: np.ndarray, patch_right: np.ndarray, patches):
     combined = combine_patch_horizontal(patch_left, patch_right)
@@ -88,12 +90,14 @@ def stitch_horizontal(patch_left: np.ndarray, patch_right: np.ndarray, patches):
                           axis=1)
     return last
 
+
 def stitch_vertical_lossy(patch_up: np.ndarray, patch_down: np.ndarray):
     combined = combine_patch_vertical(patch_up, patch_down)
     last = np.concatenate((patch_up[0:patch_up.shape[0] - offset, :, :],
                            combined,
                            patch_down[offset:patch_down.shape[0] - offset, :, :]))
     return last
+
 
 def stitch_horizontal_lossy(patch_left: np.ndarray, patch_right: np.ndarray):
     combined = combine_patch_horizontal(patch_left, patch_right)
@@ -102,6 +106,7 @@ def stitch_horizontal_lossy(patch_left: np.ndarray, patch_right: np.ndarray):
                            patch_right[:, offset:patch_right.shape[1] - offset, :]),
                           axis=1)
     return last
+
 
 def read_path_2RGB(path):
     return cv.cvtColor(cv.imread(path), cv.COLOR_BGR2RGB)
@@ -163,7 +168,7 @@ def combine_all_horizontal(image: np.ndarray, patches, number_of_rows, number_of
         last = None
 
         for col_line in range(number_of_cols - 1):
-            print(row_line, col_line)
+            # print(row_line, col_line)
             if type(source_img) is np.ndarray:
                 row_start = row_line * source_img_row_size
                 col_start = col_line * source_img_col_size
@@ -244,6 +249,7 @@ def combine_patch_vertical(up_patch: np.ndarray, down_patch: np.ndarray):
 
     return create_mask_combination(segment_top, segment_bot, offset_mask)
 
+
 def combine_patch_horizontal(left_patch, patch_right):
     offset_mask = (generate_ssd_matrix_horizontal(left_patch, patch_right))
     offset_mask = generate_path_mask_horizontal(offset_mask)
@@ -253,6 +259,7 @@ def combine_patch_horizontal(left_patch, patch_right):
     segment_left = left_patch[:, left_patch.shape[1] - offset: left_patch.shape[1]]
     segment_right = patch_right[:, 0:offset]
     return create_mask_combination(segment_left, segment_right, offset_mask)
+
 
 def generate_ssd_matrix_horizontal(patch_left: np.ndarray, patch_right: np.ndarray):
     offset_matrix = np.zeros((patch_left.shape[0], offset, 1), dtype="long")
@@ -420,22 +427,22 @@ def find_ssd(horizontal_source_patch, vertical_source_patch, patches, direction:
         ssd = 1
         if direction.Up:
             ssd *= (alpha * calculateSSD_Vertical(vertical_source_patch, patches[index], offset) + (
-                        1 - alpha) * correspondence_error)
+                    1 - alpha) * correspondence_error)
         if direction.Right:
             ssd *= (alpha * calculateSSD_Horizontal(horizontal_source_patch, patches[index], offset) + (
-                        1 - alpha) * correspondence_error)
+                    1 - alpha) * correspondence_error)
         if direction.Left:
             ssd *= alpha * calculateSSD_Horizontal(patches[index], horizontal_source_patch, offset) + (
-                        1 - alpha) * correspondence_error
+                    1 - alpha) * correspondence_error
         if direction.Down:
             ssd *= alpha * calculateSSD_Vertical(patches[index], vertical_source_patch, offset) + (
-                        1 - alpha) * correspondence_error
+                    1 - alpha) * correspondence_error
 
         if ssd < min_ssd:
             if ssd > min_error:
                 min_ssd = ssd
                 min_index = index
-    print(min_ssd)
+    # print(min_ssd)
     return patches[min_index]
 
 
@@ -455,11 +462,13 @@ def calculateSSD_Horizontal(patch_left: np.ndarray, patch_right: np.ndarray, off
     patch_right_col = patch_right[:, 0: offset_px]
     return int(np.nansum((patch_left_col - patch_right_col) ** 2))
 
+
 def calculateSSD_Vertical(patch_up: np.ndarray, patch_down: np.ndarray, offset_px):
     patch_up_col = patch_up[np.arange(patch_up.shape[0] - offset_px, patch_up.shape[0]), :]
     patch_down_col = patch_down[np.arange(0, offset_px), :]
 
     return int(np.nansum((patch_up_col - patch_down_col) ** 2))
+
 
 def generate_random_overlap(img, block_size):
     block_px_size = block_size * number_of_blocks

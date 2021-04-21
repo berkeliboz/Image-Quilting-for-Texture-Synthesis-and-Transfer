@@ -38,7 +38,7 @@ class Display():
             if EntityManager.get_terrain() is not None:
                 row, col = self.display_camera.calculate_render_target_root()
                 self.patches = EntityManager.get_terrain().fix_terrain(self.it, self.it, 0, 0)
-                self.it+=1
+                self.it += 1
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.is_ticking = False

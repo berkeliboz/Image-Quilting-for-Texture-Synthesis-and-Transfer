@@ -57,7 +57,6 @@ class Camera(Transform):
             self.location.x += config.CAMERA_SPEED
         if keys[pygame.K_UP]:
             self.location.y += config.CAMERA_SPEED
-
         self.display.fill((0, 0, 0))
         self.top_left = math.Vector2(self.location[0] - self.camera_size[0] / 2,
                                      self.location[1] - self.camera_size[1] / 2)

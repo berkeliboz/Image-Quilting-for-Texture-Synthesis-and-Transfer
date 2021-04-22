@@ -20,10 +20,11 @@ class Display():
         self.display_camera = camera.Camera(Vector2(config.HEIGHT,config.WIDTH))
         self.display_camera.attach_display(self.display)
 
-        self.patches = EntityManager.get_terrain().fix_terrain(5, 5, 0, 0)
+        self.patches = []#EntityManager.get_terrain().fix_terrain(5, 5, 0, 0)
 
-        # self.quilting_thread = Quilting_thread(EntityManager.get_terrain(), 0,0,10,15)
-        # self.quilting_thread.start()
+        row, col = self.display_camera.calculate_render_target_root()
+        self.quilting_thread = Quilting_thread(EntityManager.get_terrain(), row,col,20,20)
+        self.quilting_thread.start()
         # Absolutely last function to call
         self.update()
 
@@ -39,11 +40,11 @@ class Display():
             self.display_camera.update()
             # Add this code thread functionality
             if EntityManager.get_terrain() is not None:
-                row, col = self.display_camera.calculate_render_target_root()
-
-                # new_patches = self.quilting_thread.pop_buffer()
-                # if new_patches:
-                #     self.patches.extend(new_patches)
+                # row, col = self.display_camera.calculate_render_target_root()
+                # self.quilting_thread.update_current_draw_start(row, col)
+                new_patches = self.quilting_thread.pop_buffer()
+                if new_patches:
+                    self.patches.extend(new_patches)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -55,5 +56,4 @@ class Display():
             if len(self.patches) > 0:
                 for patch in self.patches:
                     self.display_camera.render_entity(patch)
-
             pygame.display.flip()

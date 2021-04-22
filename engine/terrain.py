@@ -23,8 +23,10 @@ class Terrain(Entity):
         self.patches_cache = dict()
         img = image_quilting.read_path_2RGB(config.SAMPLE_IMAGE_PATH)
         self.random_patches = image_quilting.generate_path_list(img, config.TERRAIN_SAMPLE_PATCH_SIZE)
-        self.generate_terrain(10, 10)
+
         self.thread_lock = threading.Lock()
+        self.texture_generator = Texture_generation_thread(self, 100, 100)
+        self.texture_generator.start()
 
     def get_basis_texture_at(self, row, col):
         bt = self.terrain_id_map.get((row, col))
@@ -91,8 +93,11 @@ class Terrain(Entity):
         patches = []
         for row in range(row_offset, number_of_vertical_patches + row_offset):
             for col in range(col_offset, number_of_horizontal_patches + col_offset - 1):
+                while self.get_basis_texture_at(row, col) is None or self.get_basis_texture_at(row, col + 1) is None or self.get_texture_at(row + 1, col) is None:
+                    time.sleep(0.5)
                 texture = image_quilting.stitch_horizontal_lossy(self.get_basis_texture_at(row, col),
                                                                  self.get_basis_texture_at(row, col + 1))
+
                 new_size = int(texture.shape[1] / 2)
                 new_size_middle = int(new_size / 2)
 
@@ -149,6 +154,71 @@ class Terrain_Patch(Entity):
     def get_basis_filename(self):
         return self.pickle_basis_location
 
+class Texture_generation_thread(threading.Thread):
+    def __init__(self, terrain : Terrain, number_of_horizontal_patches, number_of_vertical_patches, start_row = 0, start_col = 0):
+        self.start_row = start_row
+        self.start_col = start_col
+
+        self.terrain = terrain
+        self.number_of_horizontal_patches = number_of_horizontal_patches
+        self.number_of_vertical_patches = number_of_vertical_patches
+        super().__init__(target= self.generate_terrain)
+
+
+    def generate_terrain(self):
+        quilt_size = config.TERRAIN_QUILTING_SIZE
+        sample_patch_size = config.TERRAIN_SAMPLE_PATCH_SIZE
+
+        # Case 0,0
+        previous_texture = self.terrain.random_patches[0]
+        patch = Terrain_Patch((sample_patch_size, sample_patch_size), Transform((0, 0)), False)
+
+        self.terrain.thread_lock.acquire()
+        self.terrain.terrain_id_map[(self.start_row, self.start_col)] = patch
+        self.terrain.thread_lock.release()
+
+        patch.set_basis_texture(previous_texture)
+
+        for row in range(self.start_row, self.start_row + self.number_of_vertical_patches):
+            for col in range(self.start_col + 1, self.start_col + self.number_of_horizontal_patches):
+
+                patch = Terrain_Patch((sample_patch_size, sample_patch_size), Transform(
+                    (row * (sample_patch_size - quilt_size), col * (sample_patch_size - quilt_size))), False)
+
+                self.terrain.thread_lock.acquire()
+                self.terrain.terrain_id_map[(row, col)] = patch
+                self.terrain.thread_lock.release()
+
+                if patch.has_basis_texture():
+                    # print("Used cached file " + patch.get_basis_filename())
+                    continue
+
+                if row == 0:
+                    result_texture = image_quilting.find_ssd(self.terrain.get_basis_texture_at(row, col - 1), None,
+                                                             self.terrain.random_patches, direction(False, True, False, False))
+                else:
+                    horizontal = self.terrain.get_basis_texture_at(row, col - 1)
+                    vertical = self.terrain.get_basis_texture_at(row - 1, col)
+                    result_texture = image_quilting.find_ssd(horizontal, vertical, self.terrain.random_patches,
+                                                             direction(True, True, False, False))
+                patch.set_basis_texture(result_texture)
+
+            # Case 0 N, grab first texture of previous row
+            result_texture = image_quilting.find_ssd(None, self.terrain.get_basis_texture_at(row, 0), self.terrain.random_patches,
+                                                     direction(True, False, False, False))
+
+            patch = Terrain_Patch((sample_patch_size, sample_patch_size), Transform((row * (sample_patch_size - quilt_size), 0)),
+                                  False)
+
+            self.terrain.thread_lock.acquire()
+            self.terrain.terrain_id_map[(row + 1, 0)] = patch
+            self.terrain.thread_lock.release()
+
+            if patch.has_basis_texture():
+                # print("Used cached file " + patch.get_basis_filename())
+                continue
+            patch.set_basis_texture(result_texture)
+
 class Quilting_thread(threading.Thread):
     def __init__(self, terrain : Terrain, row_offset,col_offset, number_of_horizontal_patches,number_of_vertical_patches):
         self.quilted_patches = {}
@@ -158,6 +228,9 @@ class Quilting_thread(threading.Thread):
         self.col_offset = col_offset
         self.number_of_horizontal_patches = number_of_horizontal_patches
         self.number_of_vertical_patches = number_of_vertical_patches
+        self.current_row = 0
+        self.current_col = 0
+        self.redraw = True
         super().__init__(target= self.quilt_area)
 
     def add_to_buffer(self, patch):
@@ -172,9 +245,26 @@ class Quilting_thread(threading.Thread):
         self.terrain.thread_lock.release()
         return buffer_cpy
 
+    def update_current_draw_start(self,row,col):
+        if not (self.current_col == col):
+            self.col_offset = col
+            self.redraw = True
+        if not (self.current_row == row):
+            self.row_offset = row
+            self.redraw = True
+
     def quilt_area(self):
+        while True:
+            self.draw_area()
+
+    def draw_area(self):
+        self.redraw = False
         for row in range(self.row_offset, self.number_of_vertical_patches + self.row_offset):
             for col in range(self.col_offset, self.number_of_horizontal_patches + self.col_offset - 1):
+                self.current_col = col
+                self.current_row = row
+                while self.terrain.get_basis_texture_at(row, col) is None or self.terrain.get_basis_texture_at(row, col + 1) is None or self.terrain.get_texture_at(row + 1, col) is None:
+                    time.sleep(0.5)
                 if self.quilted_patches.get((row,col)):
                     continue
                 texture = image_quilting.stitch_horizontal_lossy(self.terrain.get_basis_texture_at(row, col),

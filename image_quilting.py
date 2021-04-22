@@ -5,13 +5,13 @@ from direction import direction
 import sys
 from tqdm import tqdm
 
-path = 'textures/apples.png'
+path = 'textures/Cobblestone64Single-Tile.png'
 number_of_blocks = 8
-block_size = 80
+block_size = 20
 random_sample_size = 8000
-offset = 30
+offset = 2
 min_error = 0
-stride_size = 3
+stride_size = 1
 
 alpha = 1
 

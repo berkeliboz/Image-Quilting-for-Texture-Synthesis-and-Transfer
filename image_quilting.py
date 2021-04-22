@@ -3,7 +3,6 @@ import numpy as np
 import random
 from direction import direction
 import sys
-from tqdm import tqdm
 
 path = 'textures/Cobblestone64Single-Tile.png'
 number_of_blocks = 8

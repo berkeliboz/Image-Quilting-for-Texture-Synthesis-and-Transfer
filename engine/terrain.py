@@ -3,7 +3,6 @@ import os
 import config
 import image_quilting
 import numpy as np
-import cv2 as cv
 import pickle
 import threading
 import time
@@ -11,7 +10,6 @@ import time
 from engine.entity import Entity
 from engine.transform import Transform
 from direction import direction
-from engine.entity_manager import EntityManager
 
 
 class Terrain(Entity):
@@ -25,7 +23,7 @@ class Terrain(Entity):
         self.random_patches = image_quilting.generate_path_list(img, config.TERRAIN_SAMPLE_PATCH_SIZE)
 
         self.thread_lock = threading.Lock()
-        self.texture_generator = Texture_generation_thread(self, 40, 40)
+        self.texture_generator = Texture_generation_thread(self, 60, 60)
         self.texture_generator.start()
 
     def get_basis_texture_at(self, row, col):
@@ -230,6 +228,7 @@ class Quilting_thread(threading.Thread):
         self.number_of_vertical_patches = number_of_vertical_patches
         self.current_row = 0
         self.current_col = 0
+        self.kill = False
         super().__init__(target= self.quilt_area)
 
     def add_to_buffer(self, patch):
@@ -256,16 +255,14 @@ class Quilting_thread(threading.Thread):
         self.draw_area()
 
     def draw_area(self):
-        for row in range(self.row_offset, self.number_of_vertical_patches + self.row_offset):
-            for col in range(self.col_offset, self.number_of_horizontal_patches + self.col_offset - 1):
+        for row in range(self.row_offset, self.number_of_horizontal_patches + self.row_offset):
+            for col in range(self.col_offset, self.number_of_vertical_patches + self.col_offset - 1):
                 self.current_col = col
                 self.current_row = row
                 while self.terrain.get_basis_texture_at(row, col) is None or self.terrain.get_basis_texture_at(row, col + 1) is None or self.terrain.get_texture_at(row + 1, col) is None:
                     time.sleep(0.2)
                 if self.quilted_patches.get((row,col)):
                     continue
-                # if self.redraw:
-                #     return
                 texture = image_quilting.stitch_horizontal_lossy(self.terrain.get_basis_texture_at(row, col),
                                                                  self.terrain.get_basis_texture_at(row, col + 1))
                 new_size = int(texture.shape[1] / 2)
@@ -288,6 +285,11 @@ class Quilting_thread(threading.Thread):
                 self.terrain.get_texture_at(row + 1, col)[0: new_size_middle, :] = image[
                                                                            new_size: new_size + new_size_middle,
                                                                            :]
-                self.terrain.thread_lock.release()
                 self.quilted_patches[(row, col)] = self.terrain.get_patch(row, col)
+                self.terrain.thread_lock.release()
                 self.add_to_buffer(self.terrain.get_patch(row, col))
+
+                if self.kill:
+                    if self.terrain.thread_lock.locked():
+                        self.terrain.thread_lock.release()
+                    return self.terrain.get_patch(row, col)

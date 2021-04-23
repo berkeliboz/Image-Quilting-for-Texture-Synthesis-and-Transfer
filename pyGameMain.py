@@ -7,24 +7,16 @@ from engine.entity import Entity
 from engine.terrain import Terrain
 from engine.transform import Transform
 from pygame.math import Vector2
-import image_quilting
-
+from game.hero import Hero
+from game.bed import Bed
 
 def init():
     entity_manager.EntityManager.getInstance()
 
-    test_terrain = Terrain((500, 500), (Transform(Vector2(0, 0))), True)
+    test_terrain = Terrain((100, 100), (Transform(Vector2(250, 250))), True)
+    character = Hero((100,100), (Transform(Vector2(20, 20))), True)
+    bed = Bed((100,100), (Transform(Vector2(120, 120))), True)
 
-    # img = np.array(image_quilting.main())
-    # rows, cols, dim = img.shape
-    # M2 = np.float32([[0.5, 0, 0],
-    #                 [0.1, 0.5, 0]])
-    # M2[1, 2] = -M2[0, 1] * rows / 2
-    # M2[0, 2] = -M2[1, 0] * cols / 2
-
-    # sheared_img = cv.warpAffine(img, M2, (rows, cols))
-
-    # test_entity.set_texture(sheared_img)
 
     main_display = display.Display()
 

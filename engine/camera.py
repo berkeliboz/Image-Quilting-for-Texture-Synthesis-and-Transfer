@@ -15,12 +15,12 @@ class Camera(Transform):
         super().__init__()
         self.size = size
         self.camera_size = size.elementwise() * self.scale
-        self.render_target_start = (0, 0)
         self.render_size = 0
         self.row_size, self.col_size = self.calculate_grid_size()
         self.attached_terrain = None
+        self.location = math.Vector2(0, 0)
 
-    def render_entity(self, entity: Entity.Entity):
+    def render_terrain(self, entity: Entity.Entity):
         if self.display:
             if entity.texture is None:
                 return
@@ -33,10 +33,23 @@ class Camera(Transform):
 
             self.display.blit(local_img, camera_location)
 
+    def render_entity(self, entity: Entity.Entity):
+        if self.display:
+            if entity.texture is None:
+                return
+            camera_location = entity.world_transform.location + self.location
+            local_img = transform.scale(
+                entity.texture,
+                (int(entity.size[0] * entity.world_transform.scale[0]),
+                 int(entity.size[1] * entity.world_transform.scale[1])))
+
+            self.display.blit(local_img, camera_location)
+
+
     def calculate_grid_size(self):
         patch_size = config.TERRAIN_SAMPLE_PATCH_SIZE - config.TERRAIN_QUILTING_SIZE
-        rows = int(config.HEIGHT / patch_size)
-        cols = int(config.WIDTH / patch_size)
+        rows = int(config.HEIGHT / patch_size) + 5
+        cols = int(config.WIDTH / patch_size) + 5
         return rows, cols
 
     def calculate_render_target_root(self):
@@ -54,9 +67,12 @@ class Camera(Transform):
         if keys[pygame.K_RIGHT]:
             self.location.x -= config.CAMERA_SPEED
         if keys[pygame.K_LEFT]:
-            self.location.x += config.CAMERA_SPEED
+            if self.location.x < 0:
+                self.location.x += config.CAMERA_SPEED
         if keys[pygame.K_UP]:
-            self.location.y += config.CAMERA_SPEED
+            print(self.location)
+            if self.location.y < 0:
+                self.location.y += config.CAMERA_SPEED
         self.display.fill((0, 0, 0))
         self.top_left = math.Vector2(self.location[0] - self.camera_size[0] / 2,
                                      self.location[1] - self.camera_size[1] / 2)

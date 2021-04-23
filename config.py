@@ -20,3 +20,10 @@ CAMERA_REDRAW_DISTANCE = 3
 #####################
 ### GAME TEXTURES ###
 GAME_BED = 'textures/game_textures/bed.png'
+GAME_WALL = 'textures/game_textures/basement_wall_3.png'
+GAME_CRATE_1 = 'textures/game_textures/crate_2.png'
+GAME_CRATE_2 = 'textures/game_textures/crate_3.png'
+GAME_CHEST = 'textures/game_textures/chest_2.png'
+GAME_CUPBOARD = 'textures/game_textures/cupboard_1_0-00-00-00.png'
+GAME_STOVE = 'textures/game_textures/stove.png'
+GAME_TABLE = 'textures/game_textures/table_1.png'

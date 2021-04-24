@@ -68,7 +68,7 @@ class Display():
             redraw = True
 
         if redraw:
-            print("redrawing")
+            # print("redrawing")
             self.quilted_patches = self.quilting_thread.quilted_patches
             new_patches = self.quilting_thread.pop_buffer()
             if new_patches:

@@ -70,7 +70,7 @@ class Camera(Transform):
             if self.location.x < 0:
                 self.location.x += config.CAMERA_SPEED
         if keys[pygame.K_UP]:
-            print(self.location)
+            # print(self.location)
             if self.location.y < 0:
                 self.location.y += config.CAMERA_SPEED
         self.display.fill((0, 0, 0))

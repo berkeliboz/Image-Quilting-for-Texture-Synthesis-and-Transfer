@@ -177,9 +177,14 @@ class Texture_generation_thread(threading.Thread):
 
         patch.set_basis_texture(previous_texture)
 
-        for row in range(self.start_row, self.start_row + self.number_of_vertical_patches):
-            for col in range(self.start_col + 1, self.start_col + self.number_of_horizontal_patches):
+        # for row in range(self.start_row, self.start_row + self.number_of_vertical_patches):
+        #     for col in range(self.start_col + 1, self.start_col + self.number_of_horizontal_patches):
 
+        max_axis = 2 * max(self.number_of_vertical_patches, self.number_of_horizontal_patches)
+
+        for diagonal_sum in range(1, max_axis):
+            for row in range(0, diagonal_sum):
+                col = diagonal_sum - row
                 patch = Terrain_Patch((sample_patch_size, sample_patch_size), Transform(
                     (row * (sample_patch_size - quilt_size), col * (sample_patch_size - quilt_size))), False)
 
@@ -246,17 +251,25 @@ class Quilting_thread(threading.Thread):
     def update_current_draw_start(self,row,col):
         if (abs(self.col_offset - col) > 3):
             self.col_offset = col
-            print("col updated")
+            # print("col updated")
         if (abs(self.row_offset - row) > 3):
             self.row_offset = row
-            print("row updated")
+            # print("row updated")
 
     def quilt_area(self):
         self.draw_area()
 
     def draw_area(self):
-        for row in range(self.row_offset, self.number_of_horizontal_patches + self.row_offset):
-            for col in range(self.col_offset, self.number_of_vertical_patches + self.col_offset - 1):
+
+        max_axis = 2 * max(self.number_of_vertical_patches, self.number_of_horizontal_patches)
+
+        for diagonal_sum in range(0, max_axis):
+            for row_mod in range(0, diagonal_sum):
+                col_mod = diagonal_sum - row_mod
+                row = row_mod + self.row_offset
+                col = col_mod + self.col_offset
+        # for row in range(self.row_offset, self.number_of_horizontal_patches + self.row_offset):
+        #     for col in range(self.col_offset, self.number_of_vertical_patches + self.col_offset - 1):
                 self.current_col = col
                 self.current_row = row
                 while self.terrain.get_basis_texture_at(row, col) is None or self.terrain.get_basis_texture_at(row, col + 1) is None or self.terrain.get_texture_at(row + 1, col) is None:

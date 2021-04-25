@@ -114,5 +114,4 @@ dmypy.json
 .pyre/
 
 # Cached Textures
-./engine/patches/
 *.p

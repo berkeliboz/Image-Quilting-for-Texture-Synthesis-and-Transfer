@@ -23,7 +23,7 @@ class Terrain(Entity):
         self.random_patches = image_quilting.generate_path_list(img, config.TERRAIN_SAMPLE_PATCH_SIZE)
 
         self.thread_lock = threading.Lock()
-        self.texture_generator = Texture_generation_thread(self, 60, 60)
+        self.texture_generator = Texture_generation_thread(self, config.TEXTURE_GENERATOR_MAX_LIMIT, config.TEXTURE_GENERATOR_MAX_LIMIT)
         self.texture_generator.start()
 
     def get_basis_texture_at(self, row, col):
@@ -92,7 +92,7 @@ class Terrain(Entity):
         for row in range(row_offset, number_of_vertical_patches + row_offset):
             for col in range(col_offset, number_of_horizontal_patches + col_offset - 1):
                 while self.get_basis_texture_at(row, col) is None or self.get_basis_texture_at(row, col + 1) is None or self.get_texture_at(row + 1, col) is None:
-                    time.sleep(0.5)
+                    time.sleep(0.2)
                 texture = image_quilting.stitch_horizontal_lossy(self.get_basis_texture_at(row, col),
                                                                  self.get_basis_texture_at(row, col + 1))
 
@@ -260,16 +260,8 @@ class Quilting_thread(threading.Thread):
         self.draw_area()
 
     def draw_area(self):
-
-        max_axis = 2 * max(self.number_of_vertical_patches, self.number_of_horizontal_patches)
-
-        for diagonal_sum in range(0, max_axis):
-            for row_mod in range(0, diagonal_sum):
-                col_mod = diagonal_sum - row_mod
-                row = row_mod + self.row_offset
-                col = col_mod + self.col_offset
-        # for row in range(self.row_offset, self.number_of_horizontal_patches + self.row_offset):
-        #     for col in range(self.col_offset, self.number_of_vertical_patches + self.col_offset - 1):
+        for row in range(self.row_offset, self.number_of_horizontal_patches + self.row_offset):
+             for col in range(self.col_offset, self.number_of_vertical_patches + self.col_offset - 1):
                 self.current_col = col
                 self.current_row = row
                 while self.terrain.get_basis_texture_at(row, col) is None or self.terrain.get_basis_texture_at(row, col + 1) is None or self.terrain.get_texture_at(row + 1, col) is None:

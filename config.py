@@ -4,7 +4,9 @@ SAMPLE_IMAGE_PATH = 'textures/Cobblestone64Single-Tile.png'
 CHARACTER_IDLE_PATH = 'textures/YagizIdle_2x_Scale1.png'
 IMAGE_NAME = "Single_Grass_Tile"
 OUTPUT_PATH = "\engine\patches"
+
 ENABLE_GENERATOR_CACHING = True
+TEXTURE_GENERATOR_MAX_LIMIT = 80
 
 ################
 ### TERRAIN ####

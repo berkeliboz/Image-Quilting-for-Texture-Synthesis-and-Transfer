@@ -9,7 +9,7 @@ When game slows down, it is generating new textures in the background.
 
 
 
-Config file:
+**Config file:**
 
 ENABLE_GENERATOR_CACHING: This will enable/disable texture caching. When disabled, textures are not saved/read from file. This will drasticly slowdown the performance.
 
